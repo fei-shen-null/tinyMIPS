@@ -1,0 +1,80 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="author" content="Fei Shen">
+    <meta name="date" content="Dec 2013">
+    <script src="js/jquery-2.0.3.js"></script>
+    <script src="js/functions.js"></script>
+    <script src="config/register.js"></script>
+    <script src="config/opcode.js"></script>
+    <title>TinyMIPS--CPU ISA Simulator</title>
+    <link href="css/main.css" rel="stylesheet" type="text/css">
+</head>
+<script src="code/sample.js"></script>
+<script>
+    $(document).ready(function () {
+        initCPU();
+        $('#sampleCode').find('button').click(function (e) {
+            readTextFile('code/'+e.target.id+'.txt')
+        });
+    });
+</script>
+<body>
+<div id="inputPanel">
+    <div id="sampleCode">Sample Codes
+        <button id="sum1-10">sum 1-10</button>
+        <button id="isPrime">isPrime</button>
+        <button id="predicttaken">predict taken</button>
+        <button id="forwarding">forwarding</button>
+        <button id="branchnop">branch nop</button>
+        <button id="loadstall">load stall</button>
+    </div>
+<textarea id="input" placeholder="Input Instructions">
+</textarea>
+    <div id="execPanel">
+        <button onClick="loadcode()">Load</button>
+        <button onClick="runNext()">Step</button>
+        <button onClick="runAll()">Run</button>
+        <button onClick="noPipeline()">Nopip</button>
+        <button onClick="pipeline()">Pipe</button>
+        <button onClick="about()">About</button>
+    </div>
+</div>
+<div id="memPanel">
+    <table id="RM">
+        <caption class="rValue">
+            Register Memory
+        </caption>
+    </table>
+    <div id="MM">
+        <table id="IM">
+            <caption>Instruction Memory</caption>
+            <tr>
+                <th class="b32">Address</th>
+                <th class="b32">Binary Value</th>
+            </tr>
+        </table>
+        <table id="DM">
+            <caption>
+                Data Memory
+            </caption>
+            <tr>
+                <th class="b32">Address</th>
+                <th class="b32">Binary Value</th>
+                <th class="d32">Decimal</th>
+            </tr>
+        </table>
+    </div>
+</div>
+<div id="instruct">
+    <ol>
+        <li>Write or use "Sample code"</li>
+        <li>"Load" code in memory</li>
+        <li>Execute "Step" by "Step" or "Run" to the end</li>
+        <li>"Pipe" to see the pipeline of CPU instructions</li>
+        <li>More <a href="ISA_report.docx">documentation</a></li>
+    </ol>
+</div>
+</body>
+</html>

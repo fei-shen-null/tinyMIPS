@@ -1,0 +1,10 @@
+addi r1,r0,0
+addi r2,r0,0
+addi r2,r2,1
+store r1,r0,10
+load r4,r0,10
+add r1,r4,r2
+subi r3,r2,10
+jez r3,1
+jez r0,-7
+syscall 0

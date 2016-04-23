@@ -1,0 +1,70 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="js/jquery-2.0.3.js"></script>
+<title>Logs without pipeline</title>
+<link href="css/main.css" rel="stylesheet" type="text/css">
+</head>
+<body style="margin:0px;padding:0px">
+<div id='logs'>
+<table id='log'>
+	<tr>
+        <th>opcode</th>
+        <th>cycle</th>
+        <th>count</th>
+    </tr>
+</table>
+</div>
+<div id='calc'>
+<input oninput="ready_go()" style="width: 30px; text-align: right;" id='freq' name='freq' value=2.1>GHz</input>
+<hr>
+IC=<a id="IC"></a>
+<hr>
+CC=<a id="CC"></a>
+<hr>
+CPI=<a id="CPI"></a>
+<hr>
+MIPS=<a id="MIPS"></a>
+<hr>
+Exe time=<a id="exeTime"></a>ns
+</div>
+
+<script>
+$(document).ready(function(e) {
+	ready_go();   
+});
+
+function ready_go(){
+	var logs=new Object();
+	var cc=0;
+	var ic=0;
+	var freq=parseFloat($('#freq').val());
+	$('table#log .removable').remove();
+	for (var opcd in localStorage){
+			logs[opcd]=new Object();
+			var tmp=localStorage[opcd].split(' ');
+			logs[opcd].count=tmp[0];
+			logs[opcd].cycle=tmp[1];
+			//write log table
+			$('table#log').append("<tr class=removable><td>"+opcd+"</td><td>"+logs[opcd].cycle+"</td><td>"+logs[opcd].count+"</td></tr>");
+			cc+=logs[opcd].cycle*logs[opcd].count;
+			ic+=parseInt(logs[opcd].count);
+	}
+	//CPI=CC/IC
+	var cpi=(cc/ic).toFixed(2)
+	//MIPS=FREQ/CPI*10^-6
+	var mips=(freq/cpi*1000).toFixed(2)
+	//exeTime=CC/FREQ
+	var exeTime=(cc/freq).toFixed(2);
+	
+	$('#IC').text(ic);
+	$('#CC').text(cc);
+	$('#CPI').text(cpi);
+	$('#MIPS').text(mips);
+	$('#exeTime').text(exeTime);
+	
+}
+</script>
+</body>
+</html>

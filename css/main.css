@@ -1,0 +1,203 @@
+@charset "utf-8";
+
+body {
+    font-family: "Courier New", Courier, monospace;
+    font-size: 16px;
+    color: #FFF;
+    background-color: #999;
+    margin: 5px;
+    padding: 5px;
+    margin-top: 20px;
+    height: auto;
+    width: auto;
+}
+
+li.line {
+    font-size: 12px;
+    border-top: 1px solid Indigo;
+    margin: 0px;
+    padding: 0px 0px 21px 0px;
+    width: 120px;
+}
+#instruct{
+    clear: both;
+}
+
+#input {
+    font-family: "Courier New", Courier, monospace;
+    font-size: 16px;
+    color: #FFF;
+    background-color: #333;
+    float: left;
+    height: 300px;
+    width: 200px;
+    border: medium solid #666;
+    font-weight: normal;
+    font-style: normal;
+    font-variant: normal;
+    text-transform: none;
+    line-height: normal;
+    z-index: 2;
+    margin: 5px;
+}
+
+#inputPanel {
+    margin: 5px;
+    float: left;
+    height: auto;
+    width: auto;
+    font-family: "Courier New", Courier, monospace;
+
+}
+
+#sampleCode {
+    width: 70px;
+    float: left;
+}
+
+#execPanel {
+    float: left;
+    width: 50px;
+    margin-top: 60px
+}
+
+#memPanel {
+    margin: 5px;
+    float: none;
+    height: auto;
+    width: auto;
+}
+
+table {
+    font-family: "Courier New", Courier, monospace;
+    font-size: 12px;
+    text-align: right;
+    color: #FFF;
+    background-color: #333;
+    margin: 5px;
+    padding: 2px;
+    border: medium solid #666;
+
+}
+
+table:hover {
+    transform: scale(1.5, 1.5) translate(0px, 15px);
+    -ms-transform: scale(1.5, 1.5) translate(0px, 15px); /* IE 9 */
+    -webkit-transform: scale(1.5, 1.5) translate(0px, 15px); /* Safari and Chrome */
+
+}
+
+th {
+    border: 1px solid #666;
+}
+
+td {
+    padding: 0px;
+    border: 1px solid #666;
+}
+
+table #log {
+    float: left;
+
+}
+
+#MM {
+    float: left;
+    width: 548px;
+}
+
+#RM {
+    width: 338px;
+    float: left;
+}
+
+#RM .rName {
+    width: 14px;
+    border: 1px solid #666;
+
+}
+
+table .d32 {
+    width: 70px;
+    border: 1px solid #666;
+}
+
+table .b32 {
+    width: 224px;
+    border: 1px solid #666;
+}
+
+#IM {
+    width: 472px;
+    float: left;
+    height: auto;
+}
+
+#DM {
+    float: left;
+    height: auto;
+}
+
+button {
+    cursor: pointer;
+    border: 2px solid #666;
+    width: inherit;
+}
+
+button:hover {
+    color: #FFF;
+    background-color: #333;
+}
+
+#logs {
+    width: 149px;
+    height: 517px;
+    float: left;
+    margin: 0px 20px 0px 0px !important
+}
+
+#log:hover {
+    transform: none !important;
+    -ms-transform: none !important; /* IE 9 */
+    -webkit-transform: none !important; /* Safari and Chrome */
+}
+
+#calc {
+    float: left;
+}
+
+#pip {
+    margin: 0px;
+    font-family: Verdana, Geneva, sans-serif;
+    font-size: 16px;
+    text-align: left;
+    color: DarkBlue;
+    background-color: #C7EDCC;
+    padding: 0px !important;
+    border: 1px solid Indigo;
+}
+
+#pip:hover {
+    transform: none !important;
+    -ms-transform: none !important; /* IE 9 */
+    -webkit-transform: none !important; /* Safari and Chrome */
+}
+
+#pipFig {
+
+    border: none;
+    padding: 0px;
+}
+
+#pipList {
+    margin-top: 16px;
+    margin-bottom: 0px;
+}
+
+#pipCanvas {
+    vertical-align: top;
+
+    border: none;
+    margin: 0px;
+    padding: 0px;
+}

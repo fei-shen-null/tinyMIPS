@@ -1,0 +1,484 @@
+﻿<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="js/jquery-2.0.3.js"></script>
+<script src="js/functions.js"></script>
+<script src="js/jcanvas.js"></script>
+<script src="config/register.js"></script>
+<title>Pipeline</title>
+<link href="css/main.css" rel="stylesheet" type="text/css">
+</head>
+
+<body style="margin:0px;padding:0px">
+<table id='pip'>
+<tr>
+	<td valign="top" nowrap >
+        <ol id='pipList'>
+
+        </ol>
+    </td>
+    <td id='pipFig'>
+        <canvas id='pipCanvas'>
+    
+        </canvas>
+    </td>
+</tr>
+</table>
+
+<script>
+$(document).ready(function(e) {
+	ready_go();   
+});
+function ready_go(){
+	nop={
+		'code':'nop',
+		'opcode':'nop',
+		'oprand':[
+			'',
+			'',
+			'',
+		]
+	};
+	pip=[];
+	tmp_pip=localStorage.pip.split('|');
+	var oprands=[];
+	var line=[];
+	for (var key in tmp_pip){
+		line=tmp_pip[key].split(" ");
+		var tmp={};
+		tmp.skip=line[0];
+		tmp.code=tmp_pip[key].slice(1);
+		tmp.opcode=line[1];
+		oprands=line[2].split(",");
+		tmp.oprand=[];
+		tmp.oprand[0]={};
+		tmp.oprand[1]={};
+		tmp.oprand[2]={};
+		tmp.oprand[0]=oprands[0];
+		tmp.oprand[1] = oprands[1] == 'undefined' ? "" : oprands[1];
+		tmp.oprand[2] = oprands[2] == 'undefined' ? "" : oprands[2];
+	    //add nop before branch
+		if (isBranch(tmp.opcode) && tmp.oprand[0] != 'r0') {
+		    pip.push(nop);
+		}
+	    //
+		pip.push(tmp);
+	    
+	}
+	//display
+	//list
+	for (var key in pip){	
+		$("#pip ol").append('<li class=line>'+pip[key].code+'</li>');
+	}
+	
+	
+	//initialize pip config
+	pipeline=[];
+	for (var key in pip){
+		key=parseInt(key);
+		pipeline[key]={
+			'y':key+1,//instruction sequence
+			'x':key+1,//start cycle
+			'fwd1':'none','fwd2':'none',
+			'stages':[
+				'IF','ID','EX','ME','WB'	
+			]
+			};
+	}
+	// insert stalls
+	for (var key in pip){
+		key=parseInt(key);
+		if (pip[key].skip == 1) continue;//skip predict taken
+		if (key == pip.length - 1) continue;
+		if (pip[key].opcode == 'load') {
+		    var produce = pip[key].oprand[0];
+		    switch (pip[key + 1].opcode) {
+		        case 'add':
+		        case 'sub':
+		        case 'addi':
+		        case 'subi':
+		            if (pip[key + 1].oprand[1] == produce || pip[key + 1].oprand[2] == produce) {
+		                //if next has data dependensy, stall
+		                stall(key + 1);
+		            }
+		            break;
+		        case 'mul':
+		        case 'div':
+		            if (pip[key + 1].oprand[1] == produce || pip[key + 1].oprand[0] == produce) {
+		                //if next has data dependensy, stall
+		                stall(key + 1);
+		            }
+		            break;
+		    }
+		}
+		
+		
+	}
+	//detect forwarding
+	for (var key in pip){
+		if (pip[key].skip==1) continue;
+		key=parseInt(key);
+		if (pip[key].oprand[0]=='r0') continue;
+		var produce=pip[key].oprand[0];
+		switch(pip[key].opcode){
+			case 'load':
+			    //next instruction. forward after stall
+			    if (typeof pip[key + 1] !== 'undefined' && (pip[key + 1].skip != 1)) {
+			        switch (pip[key + 1].opcode) {
+			            case 'add':
+			            case 'sub':
+			                //2nd and 3rd oprand
+			                if (pip[key + 1].oprand[2] == produce) {
+			                    //fwd2=x1 y1 x2 y2
+			                    pipeline[key + 1].fwd2 = (parseFloat(pipeline[key].x) + 3.5) + ' '
+								+ pipeline[key].y + ' ' + (parseFloat(pipeline[key + 1].x) + 3) + ' ' + pipeline[key + 1].y;
+			                }
+			                if (pip[key + 1].oprand[1] == produce) {
+			                    //fwd1=x1 y1 x2 y2
+			                    pipeline[key + 1].fwd1 = (parseFloat(pipeline[key].x) + 3.5) + ' '
+								+ pipeline[key].y + ' ' + (parseFloat(pipeline[key + 1].x) + 3) + ' ' + pipeline[key + 1].y;
+			                }
+			                break;
+			            case 'addi':
+			            case 'subi':
+			                //2nd oprand
+			                if (pip[key + 1].oprand[1] == produce) {
+			                    //fwd1=x1 y1 x2 y2
+			                    pipeline[key + 1].fwd1 = (parseFloat(pipeline[key].x) + 3.5) + ' '
+								+ pipeline[key].y + ' ' + (parseFloat(pipeline[key + 1].x) + 3) + ' ' + pipeline[key + 1].y;
+			                }
+			                break;
+			            case 'mul':
+			            case 'div':
+			                //1st and 2nd
+			                if (pip[key + 1].oprand[2] == produce) {
+			                    //fwd2=x1 y1 x2 y2
+			                    pipeline[key + 1].fwd2 = (parseFloat(pipeline[key].x) + 3.5) + ' '
+								+ pipeline[key].y + ' ' + (parseFloat(pipeline[key + 1].x) + 3) + ' ' + pipeline[key + 1].y;
+			                }
+			                if (pip[key + 1].oprand[1] == produce) {
+			                    //fwd1=x1 y1 x2 y2
+			                    pipeline[key + 1].fwd1 = (parseFloat(pipeline[key].x) + 3.5) + ' '
+								+ pipeline[key].y + ' ' + (parseFloat(pipeline[key + 1].x) + 3) + ' ' + pipeline[key + 1].y;
+			                }
+			                break;
+			        }
+			    }
+			    //next 2 instruction
+			    if (typeof pip[key + 2] !== 'undefined' && (pip[key + 2].skip != 1)) {
+			        switch (pip[key + 2].opcode) {
+			            case 'add':
+			            case 'sub':
+			                //2nd and 3rd oprand
+			                //stalled and not stalled are same
+			                    if (pip[key + 2].oprand[2] == produce) {
+			                        //fwd2=x1 y1 x2 y2
+			                        pipeline[key + 2].fwd2 = (parseFloat(pipeline[key].x) + 4) + ' '
+                                    + pipeline[key].y + ' ' + (parseFloat(pipeline[key + 2].x) + 2) + ' ' + pipeline[key + 2].y;
+			                    }
+			                    if (pip[key + 2].oprand[1] == produce) {
+			                        //fwd1=x1 y1 x2 y2
+			                        pipeline[key + 2].fwd1 = (parseFloat(pipeline[key].x) + 4) + ' '
+                                    + pipeline[key].y + ' ' + (parseFloat(pipeline[key + 2].x) + 2) + ' ' + pipeline[key + 2].y;
+			                    }
+			                
+			                break;
+			            case 'addi':
+			            case 'subi':
+			                if (pip[key + 2].oprand[2] == produce) {
+			                    //fwd1=x1 y1 x2 y2
+			                    pipeline[key + 2].fwd1 = (parseFloat(pipeline[key].x) + 4) + ' '
+								+ pipeline[key].y + ' ' + (parseFloat(pipeline[key + 2].x) + 2) + ' ' + pipeline[key + 2].y;
+			                }
+			                break;
+			            case 'mul':
+			            case 'div':
+			                //1st and 2nd
+			                if (pip[key + 2].oprand[2] == produce) {
+			                    //fwd2=x1 y1 x2 y2
+			                    pipeline[key + 2].fwd2 = (parseFloat(pipeline[key].x) + 4) + ' '
+								+ pipeline[key].y + ' ' + (parseFloat(pipeline[key + 2].x) + 2) + ' ' + pipeline[key + 2].y;
+			                }
+			                if (pip[key + 2].oprand[1] == produce) {
+			                    //fwd1=x1 y1 x2 y2
+			                    pipeline[key + 2].fwd1 = (parseFloat(pipeline[key].x) + 4) + ' '
+								+ pipeline[key].y + ' ' + (parseFloat(pipeline[key + 2].x) + 2) + ' ' + pipeline[key + 2].y;
+			                }
+			                break;
+			            default://branch and jump
+			                if (isBranch(pip[key + 2].opcode) || isJmp(pip[key + 2].opcode)) {
+			                    if (pip[key + 2].oprand[0] == produce) {//must stall
+			                        //fwd1=x1 y1 x2 y2
+			                        pipeline[key + 2].fwd1 = (parseFloat(pipeline[key].x) + 4) + ' '
+                                    + pipeline[key].y + ' ' + (parseFloat(pipeline[key + 2].x) + 2) + ' ' + pipeline[key + 2].y;
+			                    }
+			                }
+			                break;
+
+			        }
+			    }
+			    //next 3 instruction not possible
+			    
+
+			break;
+			case 'add':
+			case 'sub':		
+			case 'addi':
+			case 'subi':
+			case 'lui':
+			case 'ori':
+			case 'mfhi':
+			case 'mflo':
+				//next instruction
+				if (typeof pip[key+1] !== 'undefined' && (pip[key+1].skip!=1)){
+					switch (pip[key+1].opcode){
+						case 'add':
+						case 'sub':
+							//2nd and 3rd oprand
+							if (pip[key+1].oprand[2]==produce){
+								//fwd2=x1 y1 x2 y2
+								pipeline[key+1].fwd2=(parseFloat(pipeline[key].x)+2.5)+' '
+								+pipeline[key].y+' '+(parseFloat(pipeline[key+1].x)+2)+' '+pipeline[key+1].y;
+							}
+							if (pip[key+1].oprand[1]==produce){
+								//fwd1=x1 y1 x2 y2
+								pipeline[key+1].fwd1=(parseFloat(pipeline[key].x)+2.5)+' '
+								+pipeline[key].y+' '+(parseFloat(pipeline[key+1].x)+2)+' '+pipeline[key+1].y;
+							}
+							break;
+						case 'addi':
+						case 'subi':
+							//2nd oprand
+							if (pip[key+1].oprand[1]==produce){
+								//fwd1=x1 y1 x2 y2
+								pipeline[key+1].fwd1=(parseFloat(pipeline[key].x)+2.5)+' '
+								+pipeline[key].y+' '+(parseFloat(pipeline[key+1].x)+2)+' '+pipeline[key+1].y;
+							}
+							break;
+						case 'mul':
+						case 'div':
+							//1st and 2nd
+							if (pip[key+1].oprand[2]==produce){
+								//fwd2=x1 y1 x2 y2
+								pipeline[key+1].fwd2=(parseFloat(pipeline[key].x)+2.5)+' '
+								+pipeline[key].y+' '+(parseFloat(pipeline[key+1].x)+2)+' '+pipeline[key+1].y;
+							}
+							if (pip[key+1].oprand[1]==produce){
+								//fwd1=x1 y1 x2 y2
+								pipeline[key+1].fwd1=(parseFloat(pipeline[key].x)+2.5)+' '
+								+pipeline[key].y+' '+(parseFloat(pipeline[key+1].x)+2)+' '+pipeline[key+1].y;
+							}
+							break;	
+					}
+				}
+				//next 2 instruction
+				if (typeof pip[key+2] !== 'undefined' && (pip[key+2].skip!=1)) {
+					switch (pip[key+2].opcode){
+						case 'add':
+						case 'sub':
+							if (pipeline[key+2].stages.length>5) continue; //stall, no forwarding
+							//2nd and 3rd oprand
+							if (pip[key+2].oprand[2]==produce){
+								//fwd2=x1 y1 x2 y2
+								pipeline[key+2].fwd2=(parseFloat(pipeline[key].x)+3.5)+' '
+								+pipeline[key].y+' '+(parseFloat(pipeline[key+2].x)+2)+' '+pipeline[key+2].y;
+							}
+							if (pip[key+2].oprand[1]==produce){
+								//fwd1=x1 y1 x2 y2
+								pipeline[key+2].fwd1=(parseFloat(pipeline[key].x)+3.5)+' '
+								+pipeline[key].y+' '+(parseFloat(pipeline[key+2].x)+2)+' '+pipeline[key+2].y;
+							}
+							break;
+						case 'addi':
+						case 'subi':
+							if (pipeline[key+2].stages.length>5) continue; //stall, no forwarding
+							//2nd oprand
+							if (pip[key+2].oprand[2]==produce){
+								//fwd1=x1 y1 x2 y2
+								pipeline[key+2].fwd1=(parseFloat(pipeline[key].x)+3.5)+' '
+								+pipeline[key].y+' '+(parseFloat(pipeline[key+2].x)+2)+' '+pipeline[key+2].y;
+							}
+							break;
+						case 'mul':
+						case 'div':
+							if (pipeline[key+2].stages.length>5) continue; //stall, no forwarding
+							//1st and 2nd
+							if (pip[key+2].oprand[2]==produce){
+								//fwd2=x1 y1 x2 y2
+								pipeline[key+2].fwd2=(parseFloat(pipeline[key].x)+3.5)+' '
+								+pipeline[key].y+' '+(parseFloat(pipeline[key+2].x)+2)+' '+pipeline[key+2].y;
+							}
+							if (pip[key+2].oprand[1]==produce){
+								//fwd1=x1 y1 x2 y2
+								pipeline[key+2].fwd1=(parseFloat(pipeline[key].x)+3.5)+' '
+								+pipeline[key].y+' '+(parseFloat(pipeline[key+2].x)+2)+' '+pipeline[key+2].y;
+							}
+							break;
+						default://branch and jump
+						    if (isBranch(pip[key+2].opcode)||isJmp(pip[key+2].opcode)){
+						        if (pip[key+2].oprand[0]==produce){
+						            //fwd1=x1 y1 x2 y2
+						            pipeline[key+2].fwd1=(parseFloat(pipeline[key].x)+2.5)+' '
+                                    +pipeline[key].y+' '+(parseFloat(pipeline[key+2].x)+1)+' '+pipeline[key+2].y;
+						        }
+						    }
+							break;
+						
+					}
+				}
+				//next 3 instruction
+				if (typeof pip[key+3] !== 'undefined' && (pip[key+3].skip!=1)){
+					switch (pip[key+3].opcode){
+						case 'add':
+						case 'sub':
+							if (pipeline[key+3].stages.length>5) continue; //stall, no forwarding
+							//2nd and 3rd oprand
+							if (pip[key+3].oprand[2]==produce){
+								//fwd2=x1 y1 x2 y2
+								pipeline[key+3].fwd2=(parseFloat(pipeline[key].x)+4)+' '
+								+pipeline[key].y+' '+(parseFloat(pipeline[key+3].x)+1)+' '+pipeline[key+3].y;
+							}
+							if (pip[key+3].oprand[1]==produce){
+								//fwd1=x1 y1 x2 y2
+								pipeline[key+3].fwd1=(parseFloat(pipeline[key].x)+4)+' '
+								+pipeline[key].y+' '+(parseFloat(pipeline[key+3].x)+1)+' '+pipeline[key+3].y;
+							}
+							break;
+						case 'addi':
+						case 'subi':
+							if (pipeline[key+3].stages.length>5) continue; //stall, no forwarding
+							//2nd oprand
+							if (pip[key+3].oprand[2]==produce){
+								//fwd1=x1 y1 x2 y2
+								pipeline[key+3].fwd1=(parseFloat(pipeline[key].x)+4)+' '
+								+pipeline[key].y+' '+(parseFloat(pipeline[key+3].x)+1)+' '+pipeline[key+3].y;
+							}
+							break;
+						case 'mul':
+						case 'div':
+							if (pipeline[key+3].stages.length>5) continue; //stall, no forwarding
+							//1st and 2nd
+							if (pip[key+3].oprand[2]==produce){
+								//fwd2=x1 y1 x2 y2
+								pipeline[key+3].fwd2=(parseFloat(pipeline[key].x)+4)+' '
+								+pipeline[key].y+' '+(parseFloat(pipeline[key+3].x)+1)+' '+pipeline[key+3].y;
+							}
+							if (pip[key+3].oprand[1]==produce){
+								//fwd1=x1 y1 x2 y2
+								pipeline[key+3].fwd1=(parseFloat(pipeline[key].x)+4)+' '
+								+pipeline[key].y+' '+(parseFloat(pipeline[key+3].x)+1)+' '+pipeline[key+3].y;
+							}
+							break;
+						default://branch and jump
+							if (isBranch(pip[key+3].opcode)||isJmp(pip[key+3].opcode)){
+								if (pip[key+3].oprand[0]==produce){
+								//fwd1=x1 y1 x2 y2
+								pipeline[key+3].fwd1=(parseFloat(pipeline[key].x)+4)+' '
+								+pipeline[key].y+' '+(parseFloat(pipeline[key+3].x)+1)+' '+pipeline[key+3].y;
+							}
+							break;
+						    }
+				    }
+				    break;
+				}
+		}
+			
+	
+	
+		
+	}
+	//
+	//figure
+	//init canvas
+	w=40;//cell width
+	ic=pip.length;
+	myCanvas=$('#pipCanvas');
+	myCanvas.attr('height',(ic*36+36)+'px');
+	cc=parseInt(pipeline[pipeline.length-1].x)+parseInt(pipeline[pipeline.length-1].stages.length)-1;
+	myCanvas.attr('width',cc*w+'px');
+	//draw clock cycle
+	for (i=0;i<cc;i++){
+		myCanvas.drawText({
+			fillStyle: "#DarkBlue",
+			x: i*w+w/2, y: 8,
+			fontSize: 14,
+			fontFamily: "Verdana, sans-serif",
+			text: i+1
+		});
+	}
+	//draw stages
+	for (i=0;i<ic;i++){
+		var x,y,textColor='DarkBlue',boxColor;
+		y=pipeline[i].y*36;
+		for (var ii in pipeline[i].stages){
+			switch (pipeline[i].stages[ii]){
+				case 'IF': boxColor='DeepSkyBlue';break;
+				case 'ID': boxColor='#00ACE6';break;
+				case 'EX': boxColor='#0099CC';break;
+				case 'ME': boxColor='#0086B2';break;
+				case 'WB': boxColor='#007399 ';break;
+				case 'XX': boxColor='DarkOrange ';break;	
+			}
+			x=pipeline[i].x*w+ii*w-w/2;
+			myCanvas.drawRect({
+			  fillStyle: boxColor,
+			  x: x, y: y,
+			  width: w-4,
+			  height: 30,
+			  cornerRadius:4,
+			  mask:true
+			})
+			.drawText({
+			  fillStyle: textColor,
+			  x: x, y: y,
+			  fontSize: 12,
+			  fontFamily: "Verdana, sans-serif",
+			  text: pipeline[i].stages[ii]
+			})
+			.restoreCanvas();
+		}
+	}
+	//draw forwarding
+	for (i=0;i<ic;i++){
+		if (pipeline[i].fwd1!=='none')
+			drawFWD(pipeline[i].fwd1);
+		if (pipeline[i].fwd2!=='none')
+			drawFWD(pipeline[i].fwd2);
+	}
+	
+	//
+	
+	
+}
+function drawFWD(xy){
+	xy=xy.split(' ');
+	x1=xy[0]*w-w/2;
+	y1=xy[1]*36+8;
+	x2=xy[2]*w-w/2;
+	y2=xy[3]*36-12;
+	myCanvas.drawLine({
+		strokeStyle: '#000',
+		strokeWidth: 1,
+		rounded: true,
+		endArrow: true,
+		arrowRadius: 4,
+		arrowAngle: 60,
+		x1: x1, y1: y1,
+		x2: x2, y2: y2,
+	});
+}
+function stall(key){
+	key=parseInt(key);
+	//stall next two instructions 
+	pipeline[key].stages.splice(2,0,'XX');
+	pipeline[key+1].stages.splice(1,0,'XX');
+	//and delay to all following
+	for (i=key+2;i<pip.length;i++){
+		pipeline[i].x++;
+	}
+	
+}
+</script>
+</body>
+</html>
